@@ -134,6 +134,15 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, spt abi.Regi
 		dest := PathByType(apaths, fileType)
 		storageID := PathByType(ids, fileType)
 
+		//fixme(hack)
+		if _, err := os.Stat(dest); !os.IsNotExist(err) {
+			if err := r.index.StorageDeclareSector(ctx, ID(storageID), s, fileType, op == AcquireMove); err != nil {
+				log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
+			}
+			continue
+		}
+		log.Infof("acquireFromRemote %s", dest)
+
 		url, err := r.acquireFromRemote(ctx, s, fileType, dest)
 		if err != nil {
 			return SectorPaths{}, SectorPaths{}, err
