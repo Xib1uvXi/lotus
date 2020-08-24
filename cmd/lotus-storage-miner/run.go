@@ -70,7 +70,7 @@ var runCmd = &cli.Command{
 
 		if cctx.Bool("manage-fdlimit") {
 			if _, _, err := ulimit.ManageFdLimit(); err != nil {
-				log.Errorf("setting file descriptor limit: %s", err)
+				log.Errorf("setting file descriptor  limit: %s", err)
 			}
 		}
 
