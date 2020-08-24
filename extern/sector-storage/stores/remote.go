@@ -47,6 +47,9 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types SectorF
 }
 
 func NewRemote(local *Local, index SectorIndex, auth http.Header, fetchLimit int) *Remote {
+
+	log.Infof("XG Lotus Hack Remote")
+
 	return &Remote{
 		local: local,
 		index: index,
