@@ -3,6 +3,7 @@ package sectorstorage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/extern/xcontext"
 	"io"
 	"net/http"
 
@@ -316,7 +317,9 @@ func (m *Manager) AddPiece(ctx context.Context, sector abi.SectorID, existingPie
 }
 
 func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
-	ctx, cancel := context.WithCancel(ctx)
+	xgCtx := ctx.(*xcontext.XgP1Context)
+
+	ctx, cancel := context.WithCancel(xgCtx.Ctx)
 	defer cancel()
 
 	if err := m.index.StorageLock(ctx, sector, stores.FTUnsealed, stores.FTSealed|stores.FTCache); err != nil {
@@ -332,6 +335,14 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 		if err != nil {
 			return err
 		}
+
+		wi, err := w.Info(ctx)
+		if err != nil {
+			log.Errorf("getting worker info failed: %+v", err)
+		}
+
+		xgCtx.HostName = wi.Hostname
+
 		out = p
 		return nil
 	})
@@ -340,14 +351,17 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticke
 }
 
 func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (out storage.SectorCids, err error) {
-	ctx, cancel := context.WithCancel(ctx)
+	xgCtx := ctx.(*xcontext.XgP1Context)
+
+	ctx, cancel := context.WithCancel(xgCtx.Ctx)
 	defer cancel()
 
 	if err := m.index.StorageLock(ctx, sector, stores.FTSealed, stores.FTCache); err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, true)
+	//selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, true)
+	selector := newXgP1P2Selector(m.index, sector, stores.FTCache|stores.FTSealed, true, xgCtx.HostName)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
 		p, err := w.SealPreCommit2(ctx, sector, phase1Out)
@@ -357,6 +371,27 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector abi.SectorID, phase
 		out = p
 		return nil
 	})
+	return out, err
+}
+
+func (m *Manager) SealPreCommit2XG(ctx context.Context, sector abi.SectorID, phase1Out storage.PreCommit1Out) (out storage.SectorCids, err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector, stores.FTSealed, stores.FTCache); err != nil {
+		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	//selector := newExistingSelector(m.index, sector, stores.FTCache|stores.FTSealed, true)
+	//
+	//err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, schedFetch(sector, stores.FTCache|stores.FTSealed, stores.PathSealing, stores.AcquireMove), func(ctx context.Context, w Worker) error {
+	//	p, err := w.SealPreCommit2(ctx, sector, phase1Out)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	out = p
+	//	return nil
+	//})
 	return out, err
 }
 

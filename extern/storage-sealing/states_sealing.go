@@ -3,7 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
-
+	"github.com/filecoin-project/lotus/extern/xcontext"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-statemachine"
@@ -99,20 +99,27 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
-	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
+	xgCtx := xcontext.NewXgP1Context(ctx.Context())
+
+	pc1o, err := m.sealer.SealPreCommit1(xgCtx, m.minerSector(sector.SectorNumber), ticketValue, sector.pieceInfos())
 	if err != nil {
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
 
 	return ctx.Send(SectorPreCommit1{
-		PreCommit1Out: pc1o,
-		TicketValue:   ticketValue,
-		TicketEpoch:   ticketEpoch,
+		PreCommit1Out:  pc1o,
+		TicketValue:    ticketValue,
+		TicketEpoch:    ticketEpoch,
+		WorkerHostName: xgCtx.HostName,
 	})
 }
 
 func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) error {
-	cids, err := m.sealer.SealPreCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorNumber), sector.PreCommit1Out)
+
+	xgCtx := xcontext.NewXgP1Context(ctx.Context())
+	xgCtx.HostName = sector.PC1WorkerHostName
+
+	cids, err := m.sealer.SealPreCommit2(xgCtx, m.minerSector(sector.SectorNumber), sector.PreCommit1Out)
 	if err != nil {
 		return ctx.Send(SectorSealPreCommit2Failed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
 	}

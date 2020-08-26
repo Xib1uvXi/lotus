@@ -63,9 +63,10 @@ type SectorInfo struct {
 	Pieces []Piece
 
 	// PreCommit1
-	TicketValue   abi.SealRandomness
-	TicketEpoch   abi.ChainEpoch
-	PreCommit1Out storage.PreCommit1Out
+	PC1WorkerHostName string
+	TicketValue       abi.SealRandomness
+	TicketEpoch       abi.ChainEpoch
+	PreCommit1Out     storage.PreCommit1Out
 
 	// PreCommit2
 	CommD *cid.Cid

@@ -106,9 +106,10 @@ type SectorPackingFailed struct{ error }
 func (evt SectorPackingFailed) apply(*SectorInfo) {}
 
 type SectorPreCommit1 struct {
-	PreCommit1Out storage.PreCommit1Out
-	TicketValue   abi.SealRandomness
-	TicketEpoch   abi.ChainEpoch
+	WorkerHostName string
+	PreCommit1Out  storage.PreCommit1Out
+	TicketValue    abi.SealRandomness
+	TicketEpoch    abi.ChainEpoch
 }
 
 func (evt SectorPreCommit1) apply(state *SectorInfo) {
@@ -116,6 +117,7 @@ func (evt SectorPreCommit1) apply(state *SectorInfo) {
 	state.TicketEpoch = evt.TicketEpoch
 	state.TicketValue = evt.TicketValue
 	state.PreCommit2Fails = 0
+	state.PC1WorkerHostName = evt.WorkerHostName
 }
 
 type SectorPreCommit2 struct {
