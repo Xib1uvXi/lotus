@@ -9,6 +9,7 @@ import (
 
 type WorkerInfo struct {
 	Hostname string
+	Host     string // host or host:port
 
 	Resources WorkerResources
 }
